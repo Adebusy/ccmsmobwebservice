@@ -56,10 +56,11 @@ function validateUser(user) {
   };
   return Joi.validate(user, Schema);
 }
-async function LogMeIn(request, resp) {
+async function logIn(request, resp) {
   try {
-    console.log("nmnbbmb  "+ request.params.email.trim());
-    console.log(request.params.password.trim());
+    const validateReq = validateLoginRequest(request.body);
+    if (validateReq.error) return resp.status(400).send(`error ${validateReq.error} occurred`);
+
     let retLogin = await User.findOne({
       email: request.params.email.trim(),
       password: request.params.password.trim(),
@@ -80,14 +81,13 @@ async function getUserByEmail(request, resp) {
   return resp.status(200).send(getUsr);
 }
 
-async function CheckUserByEmail(email) {
-  console.log(email);
+async function validateUserByEmail(email) {
   let getUsr = await User.findOne({ email: email });
   if (getUsr.error) return;
   return getUsr;
 }
 
-async function ListUsers(req, resp) {
+async function getAllUsers(req, resp) {
   try {
     let getUsr = await User.find();
     return resp.status(200).send(getUsr);
@@ -96,7 +96,7 @@ async function ListUsers(req, resp) {
     return "error occurred";
   }
 }
-async function CheckAndCreateNewUser(request, resp) {
+async function createNewUser(request, resp) {
   try {
     let validateReq = await validateUser(request.body);
     if (validateReq.error)
@@ -152,7 +152,7 @@ async function uploadUserPicture(req, resp) {
   return saveRec._id;
 }
 
-async function UpdatePassword(req, resp) {
+async function updatePassword(req, resp) {
   let yourString = randStr.generate(8);
   const updateRec = await User.updateOne(
     { email: req.params.email.trim() },
@@ -183,14 +183,37 @@ async function CreateUser(reqBody) {
   return saveRec._id;
 }
 
+async function getTitle(request, response) {
+  try {
+    let query = await titles.find().sort("_id");
+    return response.status(200).send(query);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+async function createTitle(request, response) {
+  console.log(request);
+  const logOBj = new titles({
+    title: request.body.title,
+    isActive: true,
+  });
+  try {
+    const doLog = await logOBj.save();
+    if(doLog) return response.send("Title created successfully");
+    return response.status(400).send(`user ${request.name} does not exist`);
+  } catch (ex){
+    console.log(ex.message);
+    return response.status(400).send(`user ${request.name}does not exist`);
+  }
+}
+
 module.exports.validateUser = validateUser;
-module.exports.userModelClass = User;
-module.exports.validateLoginRequest = validateLoginRequest;
-exports.LogMeIn = LogMeIn;
-exports.CheckAndCreateNewUser = CheckAndCreateNewUser;
-exports.CreateUser = CreateUser;
-exports.UpdatePassword = UpdatePassword;
-exports.uploadUserPicture = uploadUserPicture;
-exports.getUserByEmail = getUserByEmail;
-exports.ListUsers = ListUsers;
-exports.CheckUserByEmail = CheckUserByEmail;
+module.exports.logIn = logIn;
+module.exports.createNewUser = createNewUser;
+module.exports.updatePassword = updatePassword;
+module.exports.uploadUserPicture = uploadUserPicture;
+module.exports.getUserByEmail = getUserByEmail;
+module.exports.getAllUsers = getAllUsers;
+module.exports.validateUserByEmail = validateUserByEmail;
+module.exports.getTitle = getTitle;
+module.exports.createTitle = createTitle;

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const Joi = require("joi");
-const getUserByEmail = require("../model/usermodel");
+const User = require("../model/usermodel");
 const Complaint = mongoose.model(
   "tblComplaint",
   new mongoose.Schema({
@@ -15,7 +15,7 @@ const Complaint = mongoose.model(
     complaintDescription: { type: String, required: true, uppercase: true },
     transactionDate: { type: Date, required: true },
     complaintPrayer: { type: String, required: true },
-    dateReceived: { type: Date, required: true },
+    dateReceived: { type: Date, default: Date.now() },
     disputeAmount: { type: String, required: true },
     amountRefunded: { type: String, required: true },
     remark: { type: String },
@@ -91,7 +91,7 @@ async function logNewComplaint(request, response) {
     const doCheck = validateLogRequest(request.body);
     if (doCheck.error)
       return response.status(400).send(doCheck.error.details[0].message);
-    var userDetail = await getUserByEmail.CheckUserByEmail(email);
+    var userDetail = await User.validateUserByEmail(email);
     if (!userDetail)
       return response.status(400).send(`user ${email}does not exist`);
     let checkRe = await confirmComplaintNotAlreadyUnderProcess(request);
@@ -174,29 +174,7 @@ async function getAllComplains(request, response) {
   }
 }
 
-async function getTitle(request, response) {
-  try {
-    let query = await titles.find().sort("_id");
-    return response.status(200).send(query);
-  } catch (ex) {
-    console.log(ex);
-  }
-}
-async function createTitle(request, response) {
-  console.log(request);
-  const logOBj = new titles({
-    title: request.body.title,
-    isActive: true,
-  });
-  try {
-    const doLog = await logOBj.save();
-    if(doLog) return response.status(200).send("Title created successfully");
-    return response.status(400).send(`user ${request.name} does not exist`);
-  } catch (ex){
-    console.log(ex.message);
-    return response.status(400).send(`user ${request.name}does not exist`);
-  }
-}
+
 
 
 exports.logNewComplaint = logNewComplaint;
