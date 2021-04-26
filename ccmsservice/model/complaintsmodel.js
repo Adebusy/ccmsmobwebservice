@@ -28,6 +28,53 @@ const Complaint = mongoose.model(
     comment: { type: String },
   })
 );
+const AllComplainCategory = [{
+  id : 1,
+  name: "Account Management"
+},{
+  id : 2,
+  name: "Cards"
+},{
+  id : 3,
+  name: "Loans"
+},{
+  id : 4,
+  name: "Fraud"
+},{
+  id : 5,
+  name: "Excess Charges"
+}];
+
+const AllComplainSubCategory = [{
+  id : 1,
+  name: "Account Closure without notice"
+},{
+  id : 2,
+  name: "Card Activation"
+},{
+  id : 3,
+  name: "Loan Insurance"
+},{
+  id : 4,
+  name: "Cash/Cheque Suppression"
+},{
+  id : 5,
+  name: "Cheque Cloning"
+}];
+
+const ComplainCategory = mongoose.model(
+  "tblComplainCategory",
+  new mongoose.Schema({
+    name: { type: String }
+  })
+);
+
+const ComplainSubCategory = mongoose.model(
+  "tblComplainSubCategory",
+  new mongoose.Schema({
+    name: { type: String }
+  })
+);
 
 const titles = mongoose.model(
     "tblTitle",
@@ -36,8 +83,6 @@ const titles = mongoose.model(
       isActive: {type: Boolean, required: true},
     })
 );
-
-
 
 function validateLogRequest(newComplaint) {
   const docheck = Joi.object({
@@ -108,6 +153,7 @@ async function logNewComplaint(request, response) {
     console.log(ex.message);
   }
 }
+
 async function generateReference() {
   let RefDate = new Date();
   let month = ("0" + (RefDate.getMonth() + 1)).slice(-2);
@@ -120,6 +166,7 @@ async function generateReference() {
   console.log(`new reference 1 ${retRef}`);
   return retRef;
 }
+
 async function logComplaint(compRec, refernceNo) {
   const logOBj = new Complaint({
     referenceNumber: refernceNo,
@@ -174,12 +221,72 @@ async function getAllComplains(request, response) {
   }
 }
 
+async function createComplainCategory(request, response){
+  try{
+const complainCat = new ComplainCategory({
+  name: request.body.name
+});
+  const createComp = await complainCat.save();
+  if (createComp) return response.send("Complain category created successsfully.")
+  return response.status(400).send("Unable to create category at the moment.")
+  } catch (ex){
+    console.log(ex)
+  }
+}
 
+async function createSubComplainCategory(request, response){
 
+  try{
+const complainSubCat = new ComplainSubCategory({
+  name: request.body.name
+});
+  const createComp = await complainSubCat.save();
+  if (createComp) return response.send("Complain sub-category created successsfully.")
+  return response.status(400).send("Unable to create sub-category at the moment.")
+  } catch (ex){
+    console.log(ex)
+  }
+}
 
+async function listComplainCategory(request, response){
+  /*AllComplainCategory.forEach((value) => {
+    const complainCat = new ComplainCategory({
+      name: value.name
+    });
+      const createCop = complainCat.save();
+      console.log(createCop);
+  });*/
+
+  try {
+    let query = await ComplainCategory.find({}).sort("_id");
+    return response.status(200).send(query);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
+async function listComplainSubCategory(request, response){
+  /*AllComplainSubCategory.forEach((value) => {
+    const complainSub = new ComplainSubCategory({
+      name: value.name
+    });
+      const createCop = complainSub.save();
+      console.log(createCop);
+  });*/
+
+  try {
+    let query = await ComplainSubCategory.find({}).sort("_id");
+    return response.status(200).send(query);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+
+exports.createSubComplainCategory = createSubComplainCategory;
+exports.createComplainCategory = createComplainCategory;
 exports.logNewComplaint = logNewComplaint;
+exports.listComplainCategory = listComplainCategory;
+exports.listComplainSubCategory = listComplainSubCategory;
 exports.validateLogRequest = validateLogRequest;
 exports.getComplainsByEmail = getComplainsByEmail;
 exports.getAllComplains = getAllComplains;
-exports.getTitle =getTitle;
-exports.createTitle = createTitle;

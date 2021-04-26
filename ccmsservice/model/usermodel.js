@@ -113,12 +113,7 @@ async function createNewUser(request, resp) {
   } catch (ex) {
     console.log(ex);
   }
-  //check Email does not exist before
-  let retUser = await UserPicture.findOne({ email: request.body.email }); //.pretty();
-  if (retUser != null) {
-    return resp.status(400).send("email already exists for this user");
-  }
-
+  
   try {
     const createNew = await CreateUser(request.body);
     if (createNew != null) {
@@ -131,7 +126,7 @@ async function createNewUser(request, resp) {
     console.log(ex);
   }
 }
-async function uploadUserPicture(req, resp) {
+async function uploadUserPicture(request, resp) {
   try {
     let validateReq = await validatePicture(request.body);
     if (validateReq.error)
@@ -139,17 +134,30 @@ async function uploadUserPicture(req, resp) {
   } catch (ex) {
     console.log(ex);
   }
-  let retUser = await validatePicture.findOne({ email: request.body.phone }); //.pretty();
-  if (retUser != null) {
-    return resp.status(400).send("phone already exists");
+
+  try {
+    //confirm this is a valid user
+    let retUser = await User.findOne({ email: request.body.email }); //.pretty();
+    if (retUser == null) {
+      return resp.status(400).send(`user with email address ${request.body.email} does not exist`);
+    }
+  } catch (ex) {
+    console.log(ex);
   }
-  //upload picture
+  //check image has not already been uploaded for this user, if yes, delete so the old image can be updated
+  let retUser = await UserPicture.findOne({ email: request.body.email }); //.pretty();
+  if (retUser != null) {
+    await UserPicture.deleteOne({ email: request.body.email });
+  }
+
+  //upload new image for user
   const newPicture = new UserPicture({
-    email: req.body.email,
-    imageURI: req.body.imageURI,
+    email: request.body.email,
+    imageURI: request.body.imageURI,
   });
   const saveRec = await newPicture.save();
-  return saveRec._id;
+  if(!saveRec.error) return resp.send(`Image uploaded successfully for ${request.body.email}`);
+  return resp.status(400).send(`Server is unable to upload image at the moment for ${saveRec.error}`);
 }
 
 async function updatePassword(req, resp) {
@@ -183,6 +191,7 @@ async function CreateUser(reqBody) {
   return saveRec._id;
 }
 
+//insert title into mongodb and fetch
 async function getTitle(request, response) {
   try {
     let query = await titles.find().sort("_id");
