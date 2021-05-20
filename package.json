@@ -4,6 +4,7 @@
   "description": "this is my first test node service",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Alao Ramon Adebisi",
