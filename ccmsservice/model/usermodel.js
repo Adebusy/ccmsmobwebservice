@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
+const _ = require("lodash");
 const Joi = require("joi");
 const randStr = require("randomstring");
+const config = require("config");
 const User = mongoose.model(
   "tblUsers",
   new mongoose.Schema({
@@ -10,11 +13,11 @@ const User = mongoose.model(
     homeAddress: { type: String, required: true, uppercase: true },
     phone: { type: String, required: true, min: 10, max: 15 },
     dateOfBirth: { type: String, required: true, min: 10, max: 15 },
-    email: { type: String, required: true },
-    password: { type: String, required: true, minlength: 6, maxlength: 15 },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true, minlength: 6, maxlength: 1024 },
     dataAdded: { type: "date", default: Date.now },
     isActive: { type: Boolean, default: true },
-    AccountNo: { type: String, required: true, default: "000223232" },
+    AccountNo: { type: String, required: true, default: "000223232" }
   })
 );
 
@@ -28,6 +31,14 @@ const UserPicture = mongoose.model(
   })
 );
 
+const titles = mongoose.model(
+  "tbltitles",
+  new mongoose.Schema({
+    title: { type: String, required: true },
+    isActive: { type: String, required: true, default : true },
+  })
+);
+
 function validatePicture(PictureDetail) {
   const Schema = {
     email: Joi.string().max(50).required(),
@@ -38,8 +49,8 @@ function validatePicture(PictureDetail) {
 
 function validateLoginRequest(loginDetail) {
   const Schema = {
-    username: Joi.string().min(6).max(10).required(),
-    password: Joi.string().min(6).max(15).required(),
+    email: Joi.string().required(),
+    password: Joi.string().min(6).max(1024).required(),
   };
   return Joi.validate(loginDetail, Schema);
 }
@@ -58,18 +69,18 @@ function validateUser(user) {
 }
 async function logIn(request, resp) {
   try {
-    const validateReq = validateLoginRequest(request.body);
+    const validateReq = validateLoginRequest( _.pick(request.body, ["email","password"]));
     if (validateReq.error) return resp.status(400).send(`error ${validateReq.error} occurred`);
 
     let retLogin = await User.findOne({
-      email: request.params.email.trim(),
-      password: request.params.password.trim(),
+      email: request.body.email,
+      password: request.body.password,
     });
-    console.log(retLogin);
-    if (retLogin != null) return resp.status(200).send(retLogin);
+    if (retLogin != null) {
+      return resp.status(200).send(jwt.sign(_.pick(retLogin, ["title", "fullName","postalCode","homeAddress", "phone" ,"dateOfBirth", "email" ,"AccountNo"]),config.get("jwtPrivateKey")));
+    }
     return resp.status(400).send("Invalid userName or passwords");
   } catch (ex) {
-    console.log(ex);
     return resp.status(400).send("Invalid userName or passwords");
   }
 }
@@ -83,7 +94,6 @@ async function getUserByEmail(request, resp) {
 
 async function validateUserByEmail(email) {
   let getUsr = await User.findOne({ email: email });
-  if (getUsr.error) return;
   return getUsr;
 }
 
@@ -113,13 +123,15 @@ async function createNewUser(request, resp) {
   } catch (ex) {
     console.log(ex);
   }
-  
+  request.body.AccountNo = Math.floor(10000000 + Math.random() * 90000000);
+  console.log(request.body.AccountNo);
   try {
     const createNew = await CreateUser(request.body);
     if (createNew != null) {
-      return resp
+      const token = jwt.sign(_.pick(request.body, ["title", "fullName","postalCode","homeAddress", "phone" ,"dateOfBirth", "email"]),config.get("jwtPrivateKey"));
+      return resp.header("x-auth-token",token)
         .status(200)
-        .send(`New user with record id ${createNew} was created successfully`);
+        .send(_.pick(request.body,["title","fullName","postalCode","homeAddress","phone","dateOfBirth","email","AccountNo"]));
     }
     return resp.status(400).send("Unable to create user at the moment");
   } catch (ex) {
@@ -194,8 +206,17 @@ async function CreateUser(reqBody) {
 //insert title into mongodb and fetch
 async function getTitle(request, response) {
   try {
-    let query = await titles.find().sort("_id");
-    return response.status(200).send(query);
+    let ret =[];
+    let query = await titles.find().sort("_id").select({ "title": 1,"_id": 1});
+    if(query)
+     {
+     query.forEach(element => {
+      ret.push({"label":element.title,"value":element._id});
+       console.log(element._id);
+     });
+     }
+    response.status(200).send(ret);
+    return "title not found";
   } catch (ex) {
     console.log(ex);
   }

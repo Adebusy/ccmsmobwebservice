@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const Joi = require("joi");
 const User = require("../model/usermodel");
+const { strict } = require("joi/lib/types/symbol");
 const Complaint = mongoose.model(
   "tblComplaint",
   new mongoose.Schema({
@@ -13,12 +14,13 @@ const Complaint = mongoose.model(
     complaintSubCategory: { type: String, required: true },
     complaintSubject: { type: String, required: true },
     complaintDescription: { type: String, required: true, uppercase: true },
-    transactionDate: { type: Date, required: true },
+    transactionDate: { type: String, required: true },
     complaintPrayer: { type: String, required: true },
     dateReceived: { type: Date, default: Date.now() },
     disputeAmount: { type: String, required: true },
     amountRefunded: { type: String, required: true },
     remark: { type: String },
+    ResolutionComment: { type: String , default:"logged"},
     dateClosed: { type: Date },
     status: { type: String, required: true },
     actionTaken: { type: String },
@@ -26,6 +28,7 @@ const Complaint = mongoose.model(
     updatedBy: { type: String },
     complaintType: { type: String, required: true },
     comment: { type: String },
+    complainLocation: {type: String, default:"00"}
   })
 );
 const AllComplainCategory = [{
@@ -83,31 +86,45 @@ const titles = mongoose.model(
       isActive: {type: Boolean, required: true},
     })
 );
-
+// const docheck = {
+//   emailAddress: Joi.string().required(),
+//   accountNumber: Joi.string().required().max(10).min(8),
+//   complaintCategory: Joi.string().required(),
+//   complaintSubCategory: Joi.string().required(),
+//   complaintDescription: Joi.string().required(),
+//   complaintPrayer: Joi.string().required(),
+//   branchName: Joi.string(),
+//   complaintImplication: Joi.string().required(),
+//   complaintSubject: Joi.string().required(),
+//   transactionDate: Joi.string().required(),
+//   dateReceived: Joi.date().raw(),
+//   disputeAmount: Joi.string(),
+//   amountRefunded: Joi.string(),
+//   remark: Joi.string(),
+//   dateClosed: Joi.date().raw(),
+//   status: Joi.string(),
+//   actionTaken: Joi.string(),
+//   addedBy: Joi.string(),
+//   updatedBy: Joi.string(),
+//   complaintType: Joi.string(),
+//   comment: Joi.string(),
+// };
 function validateLogRequest(newComplaint) {
-  const docheck = Joi.object({
-    emailAddress: Joi.string().email().required(),
-    accountNumber: Joi.string().required().max(10).min(8),
+  const docheck = {
+    complaintType: Joi.string().required(),
+    emailAddress: Joi.string().required(),
+    accountNumber: Joi.string().required().max(10),
     complaintCategory: Joi.string().required(),
     complaintSubCategory: Joi.string().required(),
     complaintDescription: Joi.string().required(),
     complaintPrayer: Joi.string().required(),
-    branchName: Joi.string(),
     complaintImplication: Joi.string().required(),
     complaintSubject: Joi.string().required(),
     transactionDate: Joi.string().required(),
-    dateReceived: Joi.date().raw(),
     disputeAmount: Joi.string(),
     amountRefunded: Joi.string(),
-    remark: Joi.string(),
-    dateClosed: Joi.date().raw(),
-    status: Joi.string(),
-    actionTaken: Joi.string(),
-    addedBy: Joi.string(),
-    updatedBy: Joi.string(),
-    complaintType: Joi.string(),
-    comment: Joi.string(),
-  });
+    complainLocation: Joi.string()
+  };
   return Joi.validate(newComplaint, docheck);
 }
 
@@ -131,14 +148,27 @@ async function confirmComplaintNotAlreadyUnderProcess(request) {
 
 async function logNewComplaint(request, response) {
   try {
-    console.log(request.body.emailAddress);
+    console.log("got 1here");
+    console.log(request.body);
     var email = request.body.emailAddress;
-    const doCheck = validateLogRequest(request.body);
-    if (doCheck.error)
-      return response.status(400).send(doCheck.error.details[0].message);
-    var userDetail = await User.validateUserByEmail(email);
-    if (!userDetail)
+    console.log(email);
+    try{
+      const doCheck = validateLogRequest(request.body);
+      console.log("check response");
+      console.log(doCheck);
+      if (doCheck.error !=null)
+        return response.status(400).send(doCheck);
+    }catch (ex) {
+      console.log(ex);
+    }
+    console.log("come here");
+    var userDetail = await User.validateUserByEmail(email.trim());
+    if(userDetail == null){
       return response.status(400).send(`user ${email}does not exist`);
+    }
+
+    console.log("validateUserByEmail")
+  
     let checkRe = await confirmComplaintNotAlreadyUnderProcess(request);
     if (checkRe)
       return response
@@ -146,9 +176,11 @@ async function logNewComplaint(request, response) {
         .send("Request already logged. Please wait for us to get back.");
     let requestReference = await generateReference();
     const doInsert = logComplaint(request.body, requestReference.toString());
-    if (doInsert <= 0)
-      return response.status(400).send(doInsert.error.details[0].message);
-    return response.status(200).send("request submitted");
+    if (doInsert <= 0){
+      console.log("come here1");
+      console.log(doInsert);
+      return response.status(400).send(doInsert);}
+    return response.status(200).send(`Complain logged successfully with reference number ${requestReference}`);
   } catch (ex) {
     console.log(ex.message);
   }
@@ -169,20 +201,20 @@ async function generateReference() {
 
 async function logComplaint(compRec, refernceNo) {
   const logOBj = new Complaint({
-    referenceNumber: refernceNo,
+    referenceNumber: refernceNo.trim(),
     email: compRec.emailAddress,
     branchName: "Virtual",
-    accountNumber: compRec.accountNumber,
-    complaintImplication: compRec.complaintImplication,
-    complaintCategory: compRec.complaintCategory,
-    complaintSubCategory: compRec.complaintSubCategory,
-    complaintSubject: compRec.complaintSubject,
-    complaintDescription: compRec.complaintDescription,
-    transactionDate: compRec.transactionDate,
-    complaintPrayer: compRec.complaintPrayer,
+    accountNumber: compRec.accountNumber.trim(),
+    complaintImplication: compRec.complaintImplication.trim(),
+    complaintCategory: compRec.complaintCategory.trim(),
+    complaintSubCategory: compRec.complaintSubCategory.trim(),
+    complaintSubject: compRec.complaintSubject.trim(),
+    complaintDescription: compRec.complaintDescription.trim(),
+    transactionDate: compRec.transactionDate.trim(),
+    complaintPrayer: compRec.complaintPrayer.trim(),
     dateReceived: Date.now(),
-    disputeAmount: compRec.disputeAmount,
-    amountRefunded: compRec.amountRefunded,
+    disputeAmount: compRec.disputeAmount.trim(),
+    amountRefunded: compRec.amountRefunded.trim(),
     remark: "complaint received",
     dateClosed: Date.now(),
     status: "0",
@@ -190,6 +222,7 @@ async function logComplaint(compRec, refernceNo) {
     updatedBy: "non",
     complaintType: "card complain",
     comment: "new complaint",
+    complainLocation: compRec.complainLocation.trim(),
   });
   try {
     const doLog = await logOBj.save();
@@ -207,6 +240,18 @@ async function getComplainsByEmail(request, response) {
       "_id"
     );
     return response.status(200).send(query);
+  } catch (ex) {
+    console.log(ex);
+  }
+}
+async function updateComplain(request, response) {
+  console.log(request.body.email);
+  console.log(request.body.referenceNumber);
+  console.log(request.body.ResolutionComment);
+  console.log(request.body.status);
+  try {
+    let query = await Complaint.updateOne( {email: request.body.email, referenceNumber: request.body.referenceNumber}, { ResolutionComment: request.body.ResolutionComment, status:request.body.status})
+    return query ? response.status(200).send("Request treated successfully"): response.status(400).send(query.error); 
   } catch (ex) {
     console.log(ex);
   }
@@ -249,14 +294,7 @@ const complainSubCat = new ComplainSubCategory({
 }
 
 async function listComplainCategory(request, response){
-  /*AllComplainCategory.forEach((value) => {
-    const complainCat = new ComplainCategory({
-      name: value.name
-    });
-      const createCop = complainCat.save();
-      console.log(createCop);
-  });*/
-
+ 
   try {
     let query = await ComplainCategory.find({}).sort("_id");
     return response.status(200).send(query);
@@ -266,14 +304,7 @@ async function listComplainCategory(request, response){
 }
 
 async function listComplainSubCategory(request, response){
-  /*AllComplainSubCategory.forEach((value) => {
-    const complainSub = new ComplainSubCategory({
-      name: value.name
-    });
-      const createCop = complainSub.save();
-      console.log(createCop);
-  });*/
-
+  
   try {
     let query = await ComplainSubCategory.find({}).sort("_id");
     return response.status(200).send(query);
@@ -290,3 +321,4 @@ exports.listComplainSubCategory = listComplainSubCategory;
 exports.validateLogRequest = validateLogRequest;
 exports.getComplainsByEmail = getComplainsByEmail;
 exports.getAllComplains = getAllComplains;
+exports.updateComplain = updateComplain;

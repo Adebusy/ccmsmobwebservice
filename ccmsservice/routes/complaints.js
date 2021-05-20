@@ -7,9 +7,10 @@ const {
   listComplainCategory,
   listComplainSubCategory,
   getComplainsByEmail,
-  getAllComplains,
+  getAllComplains,updateComplain,
 } = require("../model/complaintsmodel");
 
+router.post("/updateComplain/", updateComplain);
 router.post("/createComplainCategory/", createComplainCategory);
 router.post("/createSubComplainCategory/", createSubComplainCategory);
 router.post("/logComplaint/", logNewComplaint);
