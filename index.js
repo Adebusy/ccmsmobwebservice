@@ -15,7 +15,7 @@ if(!config.get("jwtPrivateKey")) {
 app.use("/api/complaint", complaints);
 app.use("/api/user",user);
 
-const appPort = process.env.PORT || 3001;
+const appPort = process.env.PORT;
 var mongodb=   mongoose.connection;
 mongoose.connect("mongodb+srv://ccmsuser:0vvN0PEEMuAnnpNU@cluster0.a4gzt.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",{ useNewUrlParser: true })
     .then(()=> console.log('i am connected...'))
