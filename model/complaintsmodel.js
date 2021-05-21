@@ -239,6 +239,7 @@ async function getComplainsByEmail(request, response) {
     let query = await Complaint.find({ email: request.params.email }).sort(
       "_id"
     );
+    console.log(query);
     return response.status(200).send(query);
   } catch (ex) {
     console.log(ex);
