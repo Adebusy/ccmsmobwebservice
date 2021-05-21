@@ -1,1 +1,1 @@
-web: node index
+web: ccms_jwtPrivateKey=mySecureKey && node index
